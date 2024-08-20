@@ -1,53 +1,59 @@
 # SudoEsc.psm1
-$escCount = 0
-$lastEscTime = [DateTime]::MinValue
 
-function Add-SudoToLastCommand {
+$script:debugMode = $false  # Отключаем режим отладки по умолчанию
+
+function Write-DebugMessage {
+	param([string]$message)
+	if ($script:debugMode) {
+		Write-Host "DEBUG: $message" -ForegroundColor Yellow
+	}
+}
+
+function Switch-SudoCommand {
 	$line = $null
-	[Microsoft.PowerShell.PSConsoleReadLine]::GetBufferState([ref]$line, [ref]$null)
+	$cursor = $null
+	[Microsoft.PowerShell.PSConsoleReadLine]::GetBufferState([ref]$line, [ref]$cursor)
+
 	if ([string]::IsNullOrWhiteSpace($line)) {
 		$line = (Get-History -Count 1).CommandLine
 	}
+
 	if (![string]::IsNullOrWhiteSpace($line)) {
-		if (!$line.StartsWith("sudo ")) {
-			[Microsoft.PowerShell.PSConsoleReadLine]::RevertLine()
-			[Microsoft.PowerShell.PSConsoleReadLine]::InsertText("sudo $line")
-			[Microsoft.PowerShell.PSConsoleReadLine]::AcceptLine()
+		if ($line.TrimStart().StartsWith("sudo ")) {
+			$newLine = $line -replace '^(\s*)sudo\s+', '$1'
 		}
+		else {
+			$newLine = $line -replace '^(\s*)', '$1sudo '
+		}
+		[Microsoft.PowerShell.PSConsoleReadLine]::SetCursorPosition(0)
+		[Microsoft.PowerShell.PSConsoleReadLine]::DeleteLine()
+		[Microsoft.PowerShell.PSConsoleReadLine]::Insert($newLine)
 	}
 }
 
 function Enable-SudoEsc {
-	Set-PSReadLineKeyHandler -Chord Escape -ScriptBlock {
-		$now = [DateTime]::Now
-		if (($now - $script:lastEscTime).TotalMilliseconds -lt 300) {
-			$script:escCount++
-		}
-		else {
-			$script:escCount = 1
-		}
-		$script:lastEscTime = $now
-		if ($script:escCount -eq 2) {
-			Add-SudoToLastCommand
-			$script:escCount = 0
-		}
-		else {
-			[Microsoft.PowerShell.PSConsoleReadLine]::CancelLine()
-		}
+	Write-DebugMessage "Enabling SudoEsc functionality"
+
+	Set-PSReadLineKeyHandler -Chord 'Escape,Escape' -ScriptBlock {
+		Write-DebugMessage "Double Esc detected"
+		Switch-SudoCommand
+		# Перемещаем курсор в конец строки
+		[Microsoft.PowerShell.PSConsoleReadLine]::EndOfLine()
 	}
-	Write-Host "SudoEsc functionality enabled. Double-press Esc to add 'sudo' to the last command."
+
+	Write-Host "SudoEsc functionality enabled. Double-press Esc to switch 'sudo' for the current command."
 }
 
 function Disable-SudoEsc {
-	Remove-PSReadLineKeyHandler -Chord Escape
+	Write-DebugMessage "Disabling SudoEsc functionality"
+	Remove-PSReadLineKeyHandler -Chord 'Escape,Escape'
 	Write-Host "SudoEsc functionality disabled."
 }
 
 function Get-SudoEscUpdateInfo {
 	$installed = Get-Module SudoEsc -ListAvailable | Select-Object -First 1
 	$online = Find-Module SudoEsc -ErrorAction SilentlyContinue
-
-	if ($online -and ($online.Version -gt $installed.Version)) {
+	if ($null -ne $online -and $online.Version -gt $installed.Version) {
 		return @{
 			UpdateAvailable  = $true
 			InstalledVersion = $installed.Version
@@ -72,14 +78,5 @@ function Get-SudoEscUpdate {
 		Write-Host "SudoEsc is up to date. Current version: $($updateInfo.InstalledVersion)"
 	}
 }
-
-# Запускаем проверку обновлений в фоновом режиме
-Start-Job -ScriptBlock {
-	$updateInfo = Get-SudoEscUpdateInfo
-	if ($updateInfo.UpdateAvailable) {
-		Write-Host "An update for SudoEsc is available. Installed version: $($updateInfo.InstalledVersion), Latest version: $($updateInfo.OnlineVersion)"
-		Write-Host "To update, run: Update-Module SudoEsc"
-	}
-} | Out-Null
 
 Export-ModuleMember -Function Enable-SudoEsc, Disable-SudoEsc, Get-SudoEscUpdate
