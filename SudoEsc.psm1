@@ -31,18 +31,52 @@ function Switch-SudoCommand {
 	}
 }
 
+function Add-SudoEscToProfile {
+	$profileContent = @"
+
+# SudoEsc Autoload
+if (-not (Get-Module -Name SudoEsc -ListAvailable)) {
+		Install-Module -Name SudoEsc -Scope CurrentUser -Force
+}
+Import-Module SudoEsc
+Enable-SudoEsc
+"@
+
+	if (!(Test-Path -Path $PROFILE)) {
+		New-Item -ItemType File -Path $PROFILE -Force | Out-Null
+	}
+
+	$currentContent = Get-Content $PROFILE -Raw -ErrorAction SilentlyContinue
+	if ($currentContent -notmatch "# SudoEsc Autoload") {
+		Add-Content -Path $PROFILE -Value "`n$profileContent"
+		Write-Host "SudoEsc has been added to your PowerShell profile. It will be automatically loaded in future sessions." -ForegroundColor Green
+		return $true
+	}
+	else {
+		return $false
+	}
+}
+
 function Enable-SudoEsc {
-	Write-DebugMessage "Enabling SudoEsc functionality"
+	if (Get-PSReadLineKeyHandler -Chord 'Escape,Escape' | Where-Object { $_.Function -eq 'SudoEscHandler' }) {
+		return
+	}
+
 	Set-PSReadLineKeyHandler -Chord 'Escape,Escape' -ScriptBlock {
 		Write-DebugMessage "Double Esc detected"
 		Switch-SudoCommand
 		[Microsoft.PowerShell.PSConsoleReadLine]::EndOfLine()
-	}
-	Write-Host "SudoEsc functionality enabled. Double-press Esc to switch 'sudo' for the current command."
+	} -Description 'SudoEscHandler'
 
-	$addToProfile = Read-Host "Do you want to add SudoEsc to your PowerShell profile for automatic loading? (Y/N)"
-	if ($addToProfile -eq 'Y' -or $addToProfile -eq 'y') {
-		Add-SudoEscToProfile
+	$profileContent = Get-Content $PROFILE -Raw -ErrorAction SilentlyContinue
+	if ($profileContent -notmatch "# SudoEsc Autoload") {
+		$addToProfile = Read-Host "Do you want to add SudoEsc to your PowerShell profile for automatic loading? (Y/N)"
+		if ($addToProfile -eq 'Y' -or $addToProfile -eq 'y') {
+			$added = Add-SudoEscToProfile
+			if (-not $added) {
+				Write-Host "SudoEsc is already in your PowerShell profile." -ForegroundColor Yellow
+			}
+		}
 	}
 }
 
@@ -78,33 +112,6 @@ function SudoEscUpdate {
 	}
 	else {
 		Write-Host "SudoEsc is up to date. Current version: $($updateInfo.InstalledVersion)"
-	}
-}
-function Add-SudoEscToProfile {
-	$profileContent = @"
-
-# SudoEsc Autoload
-if (-not (Get-Module -Name SudoEsc -ListAvailable)) {
-    Install-Module -Name SudoEsc -Scope CurrentUser -Force
-}
-Import-Module SudoEsc
-Enable-SudoEsc
-"@
-
-	if (!(Test-Path -Path $PROFILE)) {
-		New-Item -ItemType File -Path $PROFILE -Force | Out-Null
-	}
-
-	$currentContent = Get-Content $PROFILE -Raw -ErrorAction SilentlyContinue
-	if ($currentContent -notmatch "# SudoEsc Autoload") {
-		if ($currentContent -and !$currentContent.EndsWith("`n")) {
-			$profileContent = "`n$profileContent"
-		}
-		Add-Content -Path $PROFILE -Value $profileContent
-		Write-Host "SudoEsc has been added to your PowerShell profile. It will be automatically loaded in future sessions." -ForegroundColor Green
-	}
-	else {
-		Write-Host "SudoEsc is already in your PowerShell profile." -ForegroundColor Yellow
 	}
 }
 
