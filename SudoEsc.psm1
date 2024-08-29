@@ -1,6 +1,6 @@
 # SudoEsc.psm1
 
-$script:debugMode = $false  # Отключаем режим отладки по умолчанию
+$script:debugMode = $false
 
 function Write-DebugMessage {
 	param([string]$message)
@@ -33,15 +33,17 @@ function Switch-SudoCommand {
 
 function Enable-SudoEsc {
 	Write-DebugMessage "Enabling SudoEsc functionality"
-
 	Set-PSReadLineKeyHandler -Chord 'Escape,Escape' -ScriptBlock {
 		Write-DebugMessage "Double Esc detected"
 		Switch-SudoCommand
-		# Перемещаем курсор в конец строки
 		[Microsoft.PowerShell.PSConsoleReadLine]::EndOfLine()
 	}
-
 	Write-Host "SudoEsc functionality enabled. Double-press Esc to switch 'sudo' for the current command."
+
+	$addToProfile = Read-Host "Do you want to add SudoEsc to your PowerShell profile for automatic loading? (Y/N)"
+	if ($addToProfile -eq 'Y' -or $addToProfile -eq 'y') {
+		Add-SudoEscToProfile
+	}
 }
 
 function Disable-SudoEsc {
@@ -68,7 +70,7 @@ function Get-SudoEscUpdateInfo {
 	}
 }
 
-function Get-SudoEscUpdate {
+function SudoEscUpdate {
 	$updateInfo = Get-SudoEscUpdateInfo
 	if ($updateInfo.UpdateAvailable) {
 		Write-Host "An update for SudoEsc is available. Installed version: $($updateInfo.InstalledVersion), Latest version: $($updateInfo.OnlineVersion)"
@@ -78,5 +80,32 @@ function Get-SudoEscUpdate {
 		Write-Host "SudoEsc is up to date. Current version: $($updateInfo.InstalledVersion)"
 	}
 }
+function Add-SudoEscToProfile {
+	$profileContent = @"
 
-Export-ModuleMember -Function Enable-SudoEsc, Disable-SudoEsc, Get-SudoEscUpdate
+# SudoEsc Autoload
+if (-not (Get-Module -Name SudoEsc -ListAvailable)) {
+    Install-Module -Name SudoEsc -Scope CurrentUser -Force
+}
+Import-Module SudoEsc
+Enable-SudoEsc
+"@
+
+	if (!(Test-Path -Path $PROFILE)) {
+		New-Item -ItemType File -Path $PROFILE -Force | Out-Null
+	}
+
+	$currentContent = Get-Content $PROFILE -Raw -ErrorAction SilentlyContinue
+	if ($currentContent -notmatch "# SudoEsc Autoload") {
+		if ($currentContent -and !$currentContent.EndsWith("`n")) {
+			$profileContent = "`n$profileContent"
+		}
+		Add-Content -Path $PROFILE -Value $profileContent
+		Write-Host "SudoEsc has been added to your PowerShell profile. It will be automatically loaded in future sessions." -ForegroundColor Green
+	}
+	else {
+		Write-Host "SudoEsc is already in your PowerShell profile." -ForegroundColor Yellow
+	}
+}
+
+Export-ModuleMember -Function Enable-SudoEsc, Disable-SudoEsc, SudoEscUpdate
