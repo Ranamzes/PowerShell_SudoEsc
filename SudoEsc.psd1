@@ -5,11 +5,12 @@
 	Author            = 'Re•MART'
 	Description       = 'Adds functionality to prepend sudo to the last command by double-pressing Esc'
 	PowerShellVersion = '5.1'
+	FileList          = @('readme.md','SudoEsc.psm1')
 	FunctionsToExport = @('Enable-SudoEsc', 'Disable-SudoEsc', 'SudoEscUpdate', 'Add-SudoEscToProfile')
 	PrivateData       = @{
 		PSData = @{
 			Tags         = @('sudo', 'gsudo', 'esc', 'keyboard', 'shortcut')
-			LicenseUri   = 'https://opensource.org/licenses/MIT'
+			License   = 'https://opensource.org/licenses/MIT'
 			ProjectUri   = 'https://github.com/Ranamzes/PowerShell_SudoEsc'
 			ReleaseNotes = 'Initial release of SudoEsc module.'
 		}
