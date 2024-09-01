@@ -1,6 +1,6 @@
 @{
 	RootModule        = 'SudoEsc.psm1'
-	ModuleVersion     = '1.0.3'
+	ModuleVersion     = '1.0.4'
 	GUID              = '11104456-8ce9-4742-ae8c-51e75fef4607'
 	Author            = 'Re•MART'
 	Description       = 'Adds functionality to prepend sudo to the last command by double-pressing Esc'
