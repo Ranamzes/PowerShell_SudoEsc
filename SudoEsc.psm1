@@ -1,6 +1,8 @@
 # SudoEsc.psm1
 
 $script:debugMode = $false
+$script:lastUpdateCheck = $null
+$script:updateCheckInterval = New-TimeSpan -Days 30
 
 function Write-DebugMessage {
 	param([string]$message)
@@ -41,7 +43,7 @@ function Add-SudoEscToProfile {
 
 # SudoEsc Autoload
 if (-not (Get-Module -Name SudoEsc -ListAvailable)) {
-		Install-Module -Name SudoEsc -Scope CurrentUser -Force
+    Install-Module -Name SudoEsc -Scope CurrentUser -Force
 }
 Import-Module SudoEsc
 Enable-SudoEsc
@@ -92,6 +94,7 @@ function Enable-SudoEsc {
 	}
 
 	Write-Host "SudoEsc functionality enabled. Double-press Esc to switch 'sudo' for the current command."
+	Start-AsyncUpdateCheck
 }
 
 function Disable-SudoEsc {
@@ -125,6 +128,20 @@ function Get-SudoEscUpdateInfo {
 	}
 }
 
+function Start-AsyncUpdateCheck {
+	if ($null -eq $script:lastUpdateCheck -or
+        ((Get-Date) - $script:lastUpdateCheck) -gt $script:updateCheckInterval) {
+		$script:lastUpdateCheck = Get-Date
+		Start-Job -ScriptBlock {
+			$updateInfo = Get-SudoEscUpdateInfo
+			if ($updateInfo.UpdateAvailable) {
+				Write-Host "An update for SudoEsc is available. Installed version: $($updateInfo.InstalledVersion), Latest version: $($updateInfo.OnlineVersion)" -ForegroundColor Yellow
+				Write-Host "To update, run: Update-Module SudoEsc" -ForegroundColor Yellow
+			}
+		} | Out-Null
+	}
+}
+
 function SudoEscUpdate {
 	$updateInfo = Get-SudoEscUpdateInfo
 	if ($updateInfo.UpdateAvailable) {
@@ -135,5 +152,8 @@ function SudoEscUpdate {
 		Write-Host "SudoEsc is up to date. Current version: $($updateInfo.InstalledVersion)"
 	}
 }
+
+# Initialize the last update check time
+$script:lastUpdateCheck = Get-Date
 
 Export-ModuleMember -Function Enable-SudoEsc, Disable-SudoEsc, SudoEscUpdate
