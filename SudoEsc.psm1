@@ -43,7 +43,6 @@ function Add-SudoEscToProfile {
 if (-not (Get-Module -Name SudoEsc -ListAvailable)) {
     Install-Module -Name SudoEsc -Scope CurrentUser -Force
 }
-Import-Module SudoEsc
 Enable-SudoEsc
 "@
 

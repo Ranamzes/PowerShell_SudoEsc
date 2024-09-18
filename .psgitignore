@@ -1,5 +1,6 @@
-.git/
-.history/
+.git
+.history
 .gitignore
 Manifest_example.psd1
 .vscode
+.psgitignore
