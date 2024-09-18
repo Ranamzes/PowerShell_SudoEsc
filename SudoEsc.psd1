@@ -12,7 +12,7 @@
 			Tags         = @('sudo', 'gsudo', 'esc', 'keyboard', 'shortcut')
 			License      = 'https://opensource.org/licenses/MIT'
 			ProjectUri   = 'https://github.com/Ranamzes/PowerShell_SudoEsc'
-			ReleaseNotes = 'Remove update'
+			ReleaseNotes = 'Clean profile'
 		}
 	}
 }
