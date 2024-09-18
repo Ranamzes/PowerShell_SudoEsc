@@ -1,8 +1,6 @@
 # SudoEsc.psm1
 
 $script:debugMode = $false
-$script:lastUpdateCheck = $null
-$script:updateCheckInterval = New-TimeSpan -Days 30
 
 function Write-DebugMessage {
 	param([string]$message)
@@ -92,9 +90,6 @@ function Enable-SudoEsc {
 			} -Description 'SudoEscHandler'
 		}
 	}
-
-	Write-Host "SudoEsc functionality enabled. Double-press Esc to switch 'sudo' for the current command."
-	Start-AsyncUpdateCheck
 }
 
 function Disable-SudoEsc {
@@ -110,50 +105,4 @@ function Disable-SudoEsc {
 	Write-Host "SudoEsc functionality disabled."
 }
 
-function Get-SudoEscUpdateInfo {
-	$installed = Get-Module SudoEsc -ListAvailable | Select-Object -First 1
-	$online = Find-Module SudoEsc -ErrorAction SilentlyContinue
-	if ($null -ne $online -and $online.Version -gt $installed.Version) {
-		return @{
-			UpdateAvailable  = $true
-			InstalledVersion = $installed.Version
-			OnlineVersion    = $online.Version
-		}
-	}
-	else {
-		return @{
-			UpdateAvailable  = $false
-			InstalledVersion = $installed.Version
-		}
-	}
-}
-
-function Start-AsyncUpdateCheck {
-	if ($null -eq $script:lastUpdateCheck -or
-        ((Get-Date) - $script:lastUpdateCheck) -gt $script:updateCheckInterval) {
-		$script:lastUpdateCheck = Get-Date
-		Start-Job -ScriptBlock {
-			$updateInfo = Get-SudoEscUpdateInfo
-			if ($updateInfo.UpdateAvailable) {
-				Write-Host "An update for SudoEsc is available. Installed version: $($updateInfo.InstalledVersion), Latest version: $($updateInfo.OnlineVersion)" -ForegroundColor Yellow
-				Write-Host "To update, run: Update-Module SudoEsc" -ForegroundColor Yellow
-			}
-		} | Out-Null
-	}
-}
-
-function SudoEscUpdate {
-	$updateInfo = Get-SudoEscUpdateInfo
-	if ($updateInfo.UpdateAvailable) {
-		Write-Host "An update for SudoEsc is available. Installed version: $($updateInfo.InstalledVersion), Latest version: $($updateInfo.OnlineVersion)"
-		Write-Host "To update, run: Update-Module SudoEsc"
-	}
-	else {
-		Write-Host "SudoEsc is up to date. Current version: $($updateInfo.InstalledVersion)"
-	}
-}
-
-# Initialize the last update check time
-$script:lastUpdateCheck = Get-Date
-
-Export-ModuleMember -Function Enable-SudoEsc, Disable-SudoEsc, SudoEscUpdate
+Export-ModuleMember -Function Enable-SudoEsc, Disable-SudoEsc
