@@ -42,8 +42,7 @@ function Switch-SudoCommand {
 	if (![string]::IsNullOrWhiteSpace($line)) {
 		if ($line.TrimStart().StartsWith('sudo ')) {
 			$newLine = $line -replace '^(\s*)sudo\s+', '$1'
-		}
-		else {
+		} else {
 			$newLine = $line -replace '^(\s*)', '$1sudo '
 		}
 		try {
@@ -51,8 +50,7 @@ function Switch-SudoCommand {
 			[Microsoft.PowerShell.PSConsoleReadLine]::DeleteLine()
 			[Microsoft.PowerShell.PSConsoleReadLine]::Insert($newLine)
 			[Microsoft.PowerShell.PSConsoleReadLine]::EndOfLine()
-		}
-		catch {
+		} catch {
 			# If PSReadLine is not active, just write to output as a fallback
 			Write-Host $newLine
 		}
@@ -63,15 +61,14 @@ function Remove-ExistingSudoBindings {
 	$handlers = Get-PSReadLineKeyHandler -ErrorAction SilentlyContinue
 	if ($handlers) {
 		$targets = $handlers | Where-Object {
-			$desc = $_.Description
+			$desc  = $_.Description
 			$brief = $_.BriefDescription
 			($_.Function -eq 'ScriptBlock') -and ( $desc -eq 'SudoEscHandler' -or $brief -eq 'SudoEsc' )
 		}
 		foreach ($h in $targets) {
 			if ($h.KeyChord) {
 				try { Remove-PSReadLineKeyHandler -Chord $h.KeyChord -ErrorAction SilentlyContinue } catch {}
-			}
-			elseif ($h.Key) {
+			} elseif ($h.Key) {
 				try { Remove-PSReadLineKeyHandler -Key $h.Key -ErrorAction SilentlyContinue } catch {}
 			}
 		}
@@ -105,7 +102,7 @@ function SudoEscUpdate {
 	param([switch]$Quiet)
 	try {
 		$latest = Find-Module -Name SudoEsc -ErrorAction Stop
-		$here = Get-Module -Name SudoEsc -ListAvailable | Sort-Object Version -Descending | Select-Object -First 1
+		$here   = Get-Module -Name SudoEsc -ListAvailable | Sort-Object Version -Descending | Select-Object -First 1
 		if ($here -and $latest -and ($latest.Version -gt $here.Version)) {
 			if (-not $Quiet) { Write-Host ("SudoEsc update available: {0} -> {1}" -f $here.Version, $latest.Version) -ForegroundColor Cyan }
 			return @{
@@ -114,8 +111,7 @@ function SudoEscUpdate {
 				LatestVersion   = $latest.Version
 			}
 		}
-	}
- catch {
+	} catch {
 		if (-not $Quiet) { Write-Host "SudoEsc update check failed: $($_.Exception.Message)" -ForegroundColor Yellow }
 	}
 	return @{ UpdateAvailable = $false }
@@ -144,8 +140,7 @@ function Enable-SudoEsc {
 		Set-PSReadLineKeyHandler -Chord $Chord -ScriptBlock {
 			Switch-SudoCommand
 		} -Description 'SudoEscHandler' -BriefDescription 'SudoEsc'
-	}
- else {
+	} else {
 		# Legacy fallback only supports double-ESC reliably
 		Set-PSReadLineKeyHandler -Key 'Escape' -ScriptBlock {
 			$key = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
